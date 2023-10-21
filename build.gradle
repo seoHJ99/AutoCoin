@@ -11,7 +11,7 @@ repositories {
 
 jar {
     manifest {
-        attributes 'Main-Class': 'TraderController'
+        attributes 'Main-Class': 'org.example.TraderController'
     }
 }
 dependencies {
