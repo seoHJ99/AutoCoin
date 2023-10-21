@@ -206,7 +206,7 @@ public class TraderController {
     }
 
     public static void getApiKeys() throws IOException {
-        String protocol = "file:/";
+        String protocol = "file:";
         String rootPath = System.getProperty("user.dir");
         String propertiesPath = "/api.properties";
 
