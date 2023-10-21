@@ -213,6 +213,7 @@ public class TraderController {
         StringBuilder filePath = new StringBuilder(protocol)
                 .append(rootPath)
                 .append(propertiesPath);
+        System.out.println(filePath);
 
         URL propURL = new URL(filePath.toString());
 

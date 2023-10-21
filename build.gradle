@@ -13,6 +13,12 @@ jar {
     manifest {
         attributes 'Main-Class': 'org.example.TraderController'
     }
+//    baseName 'myapp'
+//    archiveName 'reqTester.jar'
+//    dependsOn configurations.runtime
+//    from {
+//        configurations.compile.collect {it.isDirectory()? it: zipTree(it)}
+//    }
 }
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
