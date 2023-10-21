@@ -3,14 +3,19 @@ package org.example;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.google.gson.Gson;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
+
+
+import org.apache.hc.client5.http.classic.HttpClient;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpResponse;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -37,10 +42,11 @@ public class TraderController {
         List<String> result = new ArrayList<>();
 
         try {
-            HttpClient client = HttpClientBuilder.create().build();
+
+            CloseableHttpClient client = HttpClients.createDefault();
             HttpGet request = new HttpGet(serverUrl + "/v1/market/all?isDetails=false");
 
-            HttpResponse response = client.execute(request);
+            CloseableHttpResponse response = client.execute(request);
             HttpEntity entity = response.getEntity();
 
             String entityString = (EntityUtils.toString(entity, "UTF-8"));
@@ -57,6 +63,8 @@ public class TraderController {
             e.printStackTrace();
         } catch (ParseException e) {
             throw new RuntimeException(e);
+        } catch (org.apache.hc.core5.http.ParseException e) {
+            throw new RuntimeException(e);
         }
         return result;
     }
@@ -71,10 +79,10 @@ public class TraderController {
 
         try {
             int count = 5;
-            HttpClient client = HttpClientBuilder.create().build();
+            CloseableHttpClient client = HttpClients.createDefault();
             HttpGet request = new HttpGet(serverUrl + "/v1/candles/minutes/1?market=" + name + "&count=" + count);
 
-            HttpResponse response = client.execute(request);
+            CloseableHttpResponse response = client.execute(request);
             HttpEntity entity = response.getEntity();
 
             String entityString = (EntityUtils.toString(entity, "UTF-8"));
@@ -107,6 +115,8 @@ public class TraderController {
         } catch (ParseException e) {
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (org.apache.hc.core5.http.ParseException e) {
             throw new RuntimeException(e);
         }
         return "";
@@ -144,18 +154,20 @@ public class TraderController {
         String authenticationToken = "Bearer " + jwtToken;
 
         try {
-            HttpClient client = HttpClientBuilder.create().build();
+            CloseableHttpClient client = HttpClients.createDefault();
             HttpPost request = new HttpPost(serverUrl + "/v1/orders");
             request.setHeader("Content-Type", "application/json");
             request.addHeader("Authorization", authenticationToken);
             request.setEntity(new StringEntity(new Gson().toJson(params)));
 
-            HttpResponse response = client.execute(request);
+            CloseableHttpResponse response = client.execute(request);
             HttpEntity entity = response.getEntity();
 
             System.out.println(EntityUtils.toString(entity, "UTF-8"));
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (org.apache.hc.core5.http.ParseException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -172,12 +184,12 @@ public class TraderController {
         JSONParser jsonParser = new JSONParser();
 
         try {
-            HttpClient client = HttpClientBuilder.create().build();
+            CloseableHttpClient client = HttpClients.createDefault();
             HttpGet request = new HttpGet(serverUrl + "/v1/accounts");
             request.setHeader("Content-Type", "application/json");
             request.addHeader("Authorization", authenticationToken);
 
-            HttpResponse response = client.execute(request);
+            CloseableHttpResponse response = client.execute(request);
             HttpEntity entity = response.getEntity();
 
             String entityString = (EntityUtils.toString(entity, "UTF-8"));
@@ -187,6 +199,8 @@ public class TraderController {
             return Double.parseDouble(krwStr);
         } catch (IOException | ParseException e) {
             e.printStackTrace();
+        } catch (org.apache.hc.core5.http.ParseException e) {
+            throw new RuntimeException(e);
         }
         return null;
     }
