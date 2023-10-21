@@ -32,8 +32,8 @@ import java.util.*;
 
 public class TraderController {
 
-    static String accessKey = "";
-    static String secretKey = "";
+    static String accessKey = "4atmblnHE7DxJEtBam0wPQH7RqICI0611PIsrW6V";
+    static String secretKey = "uzaOTz9gBAQTLwNDnexEsdvLq1Mm8Smqgl6iA67B";
 
     public static List<String> getNames() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 
@@ -205,30 +205,30 @@ public class TraderController {
         return null;
     }
 
-    public static void getApiKeys() throws IOException {
-        String protocol = "file:/";
-        String rootPath = System.getProperty("user.dir");
-        String propertiesPath = "/api.properties";
-
-        StringBuilder filePath = new StringBuilder(protocol)
-                .append(rootPath)
-                .append(propertiesPath);
-        System.out.println(filePath);
-
-        URL propURL = new URL(filePath.toString());
-
-        Properties properties = new Properties();
-        System.out.println("여기");
-        properties.load(propURL.openStream());
-        System.out.println("어쩌면 여기");
-
-        accessKey = properties.getProperty("accessKey");
-        secretKey = properties.getProperty("secretKey");
-    }
+//    public static void getApiKeys() throws IOException {
+//        String protocol = "file:/";
+//        String rootPath = System.getProperty("user.dir");
+//        String propertiesPath = "/api.properties";
+//
+//        StringBuilder filePath = new StringBuilder(protocol)
+//                .append(rootPath)
+//                .append(propertiesPath);
+//        System.out.println(filePath);
+//
+//        URL propURL = new URL(filePath.toString());
+//
+//        Properties properties = new Properties();
+//        System.out.println("여기");
+//        properties.load(propURL.openStream());
+//        System.out.println("어쩌면 여기");
+//
+//        accessKey = properties.getProperty("accessKey");
+//        secretKey = properties.getProperty("secretKey");
+//    }
 
 
     public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
-        getApiKeys();
+//        getApiKeys();
         Double krw = (myAccount()/100) * 99.8;
         String target = "";
         List<String> list = getNames();
