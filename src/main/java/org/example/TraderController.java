@@ -21,6 +21,7 @@ import org.json.simple.parser.ParseException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.NumberFormat;
@@ -28,8 +29,10 @@ import java.util.*;
 
 public class TraderController {
 
-    static String accessKey = "4atmblnHE7DxJEtBam0wPQH7RqICI0611PIsrW6V";
-    static String secretKey = "uzaOTz9gBAQTLwNDnexEsdvLq1Mm8Smqgl6iA67B";
+    static String accessKey = "";
+    static String secretKey = "";
+    static String serverUrl = "https://api.upbit.com";
+
 
     public static List<String> getNames() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 
@@ -89,7 +92,6 @@ public class TraderController {
                 double[] priceList = new double[count];
                 JSONObject jsonOne = null;
                 for (int i = 0; i < count; i++) {
-                    System.out.println(name);
                     jsonOne = (JSONObject) jsonObject.get(i);
                     String price = f.format(jsonOne.get("trade_price"));
                     priceList[i] = Double.parseDouble(price);
@@ -100,9 +102,10 @@ public class TraderController {
                     double percent = Math.round(diff / priceList[i + 1] * 10000) / 100.0;
                     percentList.add(percent);
                 }
-                if (percentList.get(0) > 3) {
+                if (percentList.get(0) > 1.5 && percentList.get(1) > 0) {
                     return name;
                 } else if (percentList.get(0) + percentList.get(1) > 3) {
+                    System.out.println(name);
                     System.out.println("최근 2분동안 3프로 이상 상승");
                 }
             }
@@ -118,11 +121,11 @@ public class TraderController {
         return "";
     }
 
-    public static void order(String name, String expense) throws NoSuchAlgorithmException, UnsupportedEncodingException {
-        String serverUrl = "https://api.upbit.com";
+    public static void buyOrder(String coinName, String expense) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+        coinName = "KRW-" + coinName;
 
         HashMap<String, String> params = new HashMap<>();
-        params.put("market", name);
+        params.put("market", coinName);
         params.put("side", "bid");
         params.put("price", expense);
         params.put("ord_type", "price");
@@ -167,9 +170,7 @@ public class TraderController {
         }
     }
 
-    public static Double myAccount() {
-        String serverUrl = "https://api.upbit.com";
-
+    public static Double getMyAccountInfo(String coinName, String infoName) {
         Algorithm algorithm = Algorithm.HMAC256(secretKey);
         String jwtToken = JWT.create()
                 .withClaim("access_key", accessKey)
@@ -190,9 +191,20 @@ public class TraderController {
 
             String entityString = (EntityUtils.toString(entity, "UTF-8"));
             JSONArray jsonObject = (JSONArray) jsonParser.parse(entityString);
-            JSONObject krwJson = (JSONObject) jsonObject.get(0);
-            String krwStr = krwJson.get("balance").toString();
-            return Double.parseDouble(krwStr);
+            if (coinName.equals("KRW")) {
+                JSONObject krwJson = (JSONObject) jsonObject.get(0);
+                String krwStr = krwJson.get(infoName).toString();
+                return Double.parseDouble(krwStr);
+            } else {
+                for (Object json : jsonObject) {
+                    JSONObject coinJson = (JSONObject) json;
+                    if (coinJson.get("currency").toString().equals(coinName)) {
+                        String priceStr = coinJson.get(infoName).toString();
+                        return Double.parseDouble(priceStr);
+                    }
+                }
+            }
+
         } catch (IOException | ParseException e) {
             e.printStackTrace();
         } catch (org.apache.hc.core5.http.ParseException e) {
@@ -201,49 +213,161 @@ public class TraderController {
         return null;
     }
 
-//    public static void getApiKeys() throws IOException {
-//        String protocol = "file:/";
-//        String rootPath = System.getProperty("user.dir");
-//        String propertiesPath = "/api.properties";
-//
-//        StringBuilder filePath = new StringBuilder(protocol)
-//                .append(rootPath)
-//                .append(propertiesPath);
-//        System.out.println(filePath);
-//
-//        URL propURL = new URL(filePath.toString());
-//
-//        Properties properties = new Properties();
-//        System.out.println("여기");
-//        properties.load(propURL.openStream());
-//        System.out.println("어쩌면 여기");
-//
-//        accessKey = properties.getProperty("accessKey");
-//        secretKey = properties.getProperty("secretKey");
-//    }
+    public static Double getOneCoinPrice(String coinName) {
+
+        JSONParser jsonParser = new JSONParser();
+        String serverUrl = "https://api.upbit.com";
+
+        NumberFormat f = NumberFormat.getInstance();
+        f.setGroupingUsed(false);
+
+        try {
+            int count = 1;
+            CloseableHttpClient client = HttpClients.createDefault();
+            HttpGet request = new HttpGet(serverUrl + "/v1/candles/minutes/1?market=" + coinName + "&count=" + count);
+
+            CloseableHttpResponse response = client.execute(request);
+            HttpEntity entity = response.getEntity();
+            String entityString = (EntityUtils.toString(entity, "UTF-8"));
+
+            if (entityString.equals("Too many API requests.")) {
+                Thread.sleep(100);
+            } else {
+                JSONArray jsonObject = (JSONArray) jsonParser.parse(entityString);
+
+                double[] priceList = new double[count];
+                JSONObject jsonOne = null;
+
+                for (int i = 0; i < count; i++) {
+                    jsonOne = (JSONObject) jsonObject.get(i);
+                    String price = f.format(jsonOne.get("trade_price"));
+                    priceList[i] = Double.parseDouble(price);
+                }
+                return priceList[0];
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ParseException | org.apache.hc.core5.http.ParseException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        return -1d;
+    }
+
+    public static void sellOrder(String coinName, String volume) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+        coinName = "KRW-" + coinName;
+
+        HashMap<String, String> params = new HashMap<>();
+        params.put("market", coinName);
+        params.put("side", "ask");
+        params.put("volume", volume);
+        params.put("ord_type", "market");
+
+        ArrayList<String> queryElements = new ArrayList<>();
+        for (Map.Entry<String, String> entity : params.entrySet()) {
+            queryElements.add(entity.getKey() + "=" + entity.getValue());
+        }
+
+        String queryString = String.join("&", queryElements.toArray(new String[0]));
+
+        MessageDigest md = MessageDigest.getInstance("SHA-512");
+        md.update(queryString.getBytes("UTF-8"));
+
+        String queryHash = String.format("%0128x", new BigInteger(1, md.digest()));
+
+        Algorithm algorithm = Algorithm.HMAC256(secretKey);
+        String jwtToken = JWT.create()
+                .withClaim("access_key", accessKey)
+                .withClaim("nonce", UUID.randomUUID().toString())
+                .withClaim("query_hash", queryHash)
+                .withClaim("query_hash_alg", "SHA512")
+                .sign(algorithm);
+
+        String authenticationToken = "Bearer " + jwtToken;
+
+        try {
+            CloseableHttpClient client = HttpClients.createDefault();
+            HttpPost request = new HttpPost(serverUrl + "/v1/orders");
+            request.setHeader("Content-Type", "application/json");
+            request.addHeader("Authorization", authenticationToken);
+            request.setEntity(new StringEntity(new Gson().toJson(params)));
+
+            CloseableHttpResponse response = client.execute(request);
+            HttpEntity entity = response.getEntity();
+
+            System.out.println(EntityUtils.toString(entity, "UTF-8"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (org.apache.hc.core5.http.ParseException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    public static void getApiKeys() throws IOException {
+        String protocol = "file:/";
+        String rootPath = System.getProperty("user.dir");
+        String propertiesPath = "/api.properties";
+
+        StringBuilder filePath = new StringBuilder(protocol)
+                .append(rootPath)
+                .append(propertiesPath);
+
+        URL propURL = new URL(filePath.toString());
+
+        Properties properties = new Properties();
+        properties.load(propURL.openStream());
+
+        accessKey = properties.getProperty("accessKey");
+        secretKey = properties.getProperty("secretKey");
+    }
 
 
     public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
-//        getApiKeys();
-        Double krw = (myAccount()/100) * 99.8;
+        getApiKeys();
         String target = "";
         List<String> list = getNames();
-        Double price = 0d;
+        Double buyPrice = 0d;
+        String volume = "0";
 
-        while (true) {
-            for (String a : list) {
-                System.out.println(a);
-                if(a.equals("KRW-BTT")){
-                    continue;
+        loop1:while (true) {
+
+            Double krw = (getMyAccountInfo("KRW", "balance") / 100) * 99.8;
+            System.out.println("급상승 코인 찾는중");
+
+            loop2:while (true) {
+                for (String a : list) {
+                    if (a.equals("KRW-BTT")) {
+                        continue;
+                    }
+
+                    target = getTargetNameByPercent(a);
+                    if ("".equals(target)) {
+                        break;
+                    } else {
+                        System.out.println("target: " + target);
+                    }
                 }
-                target = getTargetNameByPercent(a);
-                if(!"".equals(target)){
-                    break;
+                if (krw > 0 && !"".equals(target)) {
+                    System.out.println("구매 금액:" + krw);
+                    buyOrder(target, String.valueOf(krw));
+                    krw = 0d;
+                    break loop2;
                 }
+
             }
-            if(price >0){
-                order(target, String.valueOf(krw));
-                break;
+            buyPrice = getMyAccountInfo(target, "avg_buy_price");
+
+            System.out.println("코인 매도 가격 감시 중");
+
+            loop3:while (true) {
+                Double nowPrice = getOneCoinPrice(target);
+                if (nowPrice > buyPrice * 1.01) {
+                    sellOrder(target, "avg_buy_price");
+                    break loop3;
+                } else if (nowPrice < buyPrice * 0.98) {
+                    sellOrder(target, "avg_buy_price");
+                    break loop3;
+                }
             }
         }
     }
