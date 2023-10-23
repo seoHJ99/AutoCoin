@@ -32,7 +32,7 @@ public class TraderController {
     static String accessKey = "";
     static String secretKey = "";
     static String serverUrl = "https://api.upbit.com";
-
+    static boolean successBuy = false;
 
     public static List<String> getNames() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 
@@ -102,7 +102,7 @@ public class TraderController {
                     double percent = Math.round(diff / priceList[i + 1] * 10000) / 100.0;
                     percentList.add(percent);
                 }
-                if (percentList.get(0) > 1.5 && percentList.get(1) > 0) {
+                if (percentList.get(0) > 1 && percentList.get(1) > 0.35) {
                     return name;
                 } else if (percentList.get(0) + percentList.get(1) > 3) {
                     System.out.println(name);
@@ -111,18 +111,13 @@ public class TraderController {
             }
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (org.apache.hc.core5.http.ParseException e) {
+        } catch (ParseException | org.apache.hc.core5.http.ParseException | InterruptedException e) {
             throw new RuntimeException(e);
         }
         return "";
     }
 
     public static void buyOrder(String coinName, String expense) throws NoSuchAlgorithmException, UnsupportedEncodingException {
-        coinName = "KRW-" + coinName;
 
         HashMap<String, String> params = new HashMap<>();
         params.put("market", coinName);
@@ -162,15 +157,16 @@ public class TraderController {
             CloseableHttpResponse response = client.execute(request);
             HttpEntity entity = response.getEntity();
 
-            System.out.println(EntityUtils.toString(entity, "UTF-8"));
+//            System.out.println(EntityUtils.toString(entity, "UTF-8"));
+            successBuy = true;
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (org.apache.hc.core5.http.ParseException e) {
-            throw new RuntimeException(e);
         }
     }
 
     public static Double getMyAccountInfo(String coinName, String infoName) {
+        coinName = coinName.replace("KRW-", "");
+
         Algorithm algorithm = Algorithm.HMAC256(secretKey);
         String jwtToken = JWT.create()
                 .withClaim("access_key", accessKey)
@@ -190,6 +186,8 @@ public class TraderController {
             HttpEntity entity = response.getEntity();
 
             String entityString = (EntityUtils.toString(entity, "UTF-8"));
+//            System.out.println(entityString);
+
             JSONArray jsonObject = (JSONArray) jsonParser.parse(entityString);
             if (coinName.equals("KRW")) {
                 JSONObject krwJson = (JSONObject) jsonObject.get(0);
@@ -254,7 +252,6 @@ public class TraderController {
     }
 
     public static void sellOrder(String coinName, String volume) throws NoSuchAlgorithmException, UnsupportedEncodingException {
-        coinName = "KRW-" + coinName;
 
         HashMap<String, String> params = new HashMap<>();
         params.put("market", coinName);
@@ -294,11 +291,9 @@ public class TraderController {
             CloseableHttpResponse response = client.execute(request);
             HttpEntity entity = response.getEntity();
 
-            System.out.println(EntityUtils.toString(entity, "UTF-8"));
+//            System.out.println(EntityUtils.toString(entity, "UTF-8"));
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (org.apache.hc.core5.http.ParseException e) {
-            throw new RuntimeException(e);
         }
 
     }
@@ -322,50 +317,75 @@ public class TraderController {
     }
 
 
-    public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
+    public static void main(String[] args) throws IOException, NoSuchAlgorithmException, InterruptedException {
         getApiKeys();
         String target = "";
         List<String> list = getNames();
         Double buyPrice = 0d;
-        String volume = "0";
+        Double volume = 0d;
 
-        loop1:while (true) {
-
-            Double krw = (getMyAccountInfo("KRW", "balance") / 100) * 99.8;
+        loop1:
+        while (true) {
+            Double krw =0d;
+            while(true){
+                if(getMyAccountInfo("KRW", "balance")>5000){
+                    krw = (getMyAccountInfo("KRW", "balance") / 100) * 99.8;
+                    System.out.println("이번 자금:" + krw);
+                    break ;
+                }
+            }
             System.out.println("급상승 코인 찾는중");
 
-            loop2:while (true) {
-                for (String a : list) {
+            loop2:
+            while (true) {
+
+                for (int i = 0; i < list.size(); ) {
+                    String a = list.get(i);
+//                    System.out.println(a);
                     if (a.equals("KRW-BTT")) {
+                        i++;
                         continue;
                     }
 
                     target = getTargetNameByPercent(a);
-                    if ("".equals(target)) {
-                        break;
-                    } else {
+                    if (!"".equals(target)) {
                         System.out.println("target: " + target);
+                        break;
+                    }
+
+                    if (i == list.size() - 1) {
+                        i = 0;
+                    } else {
+                        i++;
                     }
                 }
+
                 if (krw > 0 && !"".equals(target)) {
                     System.out.println("구매 금액:" + krw);
                     buyOrder(target, String.valueOf(krw));
                     krw = 0d;
                     break loop2;
                 }
-
+            }
+            while (getMyAccountInfo("KRW", "locked") > 100) {
+                Thread.sleep(100);
             }
             buyPrice = getMyAccountInfo(target, "avg_buy_price");
-
+            volume = getMyAccountInfo(target, "balance");
+            System.out.println("구매가 :" +buyPrice);
+            System.out.println("구매량 :"+ volume);
             System.out.println("코인 매도 가격 감시 중");
 
-            loop3:while (true) {
+            loop3:
+            while (true) {
                 Double nowPrice = getOneCoinPrice(target);
                 if (nowPrice > buyPrice * 1.01) {
-                    sellOrder(target, "avg_buy_price");
+                    sellOrder(target, ""+volume);
+                    System.out.println("이익! +1");
                     break loop3;
-                } else if (nowPrice < buyPrice * 0.98) {
-                    sellOrder(target, "avg_buy_price");
+                } else if (nowPrice < buyPrice * 0.99) {
+                    sellOrder(target, ""+volume);
+                    System.out.println("손해! -1");
                     break loop3;
                 }
             }
