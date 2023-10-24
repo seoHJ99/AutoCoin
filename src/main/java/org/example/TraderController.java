@@ -11,6 +11,7 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.SessionOutputBuffer;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.json.simple.JSONArray;
@@ -102,7 +103,7 @@ public class TraderController {
                     double percent = Math.round(diff / priceList[i + 1] * 10000) / 100.0;
                     percentList.add(percent);
                 }
-                if (percentList.get(0) > 1 && percentList.get(1) > 0.35) {
+                if (percentList.get(0) > 2 && percentList.get(1) > -0.5) {
                     return name;
                 } else if (percentList.get(0) + percentList.get(1) > 3) {
                     System.out.println(name);
@@ -158,11 +159,13 @@ public class TraderController {
             HttpEntity entity = response.getEntity();
 
 //            System.out.println(EntityUtils.toString(entity, "UTF-8"));
-            successBuy = true;
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
+
+    static int count = 0;
 
     public static Double getMyAccountInfo(String coinName, String infoName) {
         coinName = coinName.replace("KRW-", "");
@@ -186,7 +189,10 @@ public class TraderController {
             HttpEntity entity = response.getEntity();
 
             String entityString = (EntityUtils.toString(entity, "UTF-8"));
-//            System.out.println(entityString);
+            if (entityString.equals("Too many API requests.")) {
+                System.out.println("너무 많은 요청 오류!");
+                return -1d;
+            }
 
             JSONArray jsonObject = (JSONArray) jsonParser.parse(entityString);
             if (coinName.equals("KRW")) {
@@ -321,17 +327,18 @@ public class TraderController {
         getApiKeys();
         String target = "";
         List<String> list = getNames();
-        Double buyPrice = 0d;
-        Double volume = 0d;
+
 
         loop1:
         while (true) {
-            Double krw =0d;
-            while(true){
-                if(getMyAccountInfo("KRW", "balance")>5000){
+            Double buyPrice = 0d;
+            Double volume = 0d;
+            Double krw = 0d;
+            while (true) {// sellOrder을 날리고 바로 오는 것이 아닌, sellOrder가 처리되면 오도록 해야함.
+                if (getMyAccountInfo("KRW", "balance") > 5000) {
                     krw = (getMyAccountInfo("KRW", "balance") / 100) * 99.8;
                     System.out.println("이번 자금:" + krw);
-                    break ;
+                    break;
                 }
             }
             System.out.println("급상승 코인 찾는중");
@@ -370,23 +377,34 @@ public class TraderController {
             while (getMyAccountInfo("KRW", "locked") > 100) {
                 Thread.sleep(100);
             }
-            buyPrice = getMyAccountInfo(target, "avg_buy_price");
-            volume = getMyAccountInfo(target, "balance");
-            System.out.println("구매가 :" +buyPrice);
-            System.out.println("구매량 :"+ volume);
+            while (buyPrice == 0 || volume == 0) {
+                Thread.sleep(100);
+                buyPrice = getMyAccountInfo(target, "avg_buy_price");
+                volume = getMyAccountInfo(target, "balance");
+            }
+
+            System.out.println("구매가 :" + buyPrice);
+            System.out.println("구매량 :" + volume);
             System.out.println("코인 매도 가격 감시 중");
 
             loop3:
             while (true) {
                 Double nowPrice = getOneCoinPrice(target);
                 if (nowPrice > buyPrice * 1.01) {
-                    sellOrder(target, ""+volume);
-                    System.out.println("이익! +1");
-                    break loop3;
-                } else if (nowPrice < buyPrice * 0.99) {
-                    sellOrder(target, ""+volume);
-                    System.out.println("손해! -1");
-                    break loop3;
+                    sellOrder(target, "" + volume);
+                    System.out.println("이익 주문! +1");
+                    break;
+                } else if (nowPrice < buyPrice * 0.98) {
+                    sellOrder(target, "" + volume);
+                    System.out.println("손해 주문! -1");
+                    break;
+                }
+            }
+            krw = getMyAccountInfo("KRW", "locked");
+            while (krw != 0) {
+                krw = getMyAccountInfo("KRW", "locked");
+                if(krw == -1d){
+                    Thread.sleep(500);
                 }
             }
         }

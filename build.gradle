@@ -9,12 +9,12 @@ repositories {
     mavenCentral()
 }
 
-//jar {
-//    manifest {
-//        attributes 'Main-Class': 'org.example.TraderController',
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.example.TraderController'
 //                'Class-Path': configurations.runtimeClasspath.collect { "lib/$it.name" }.join(' ')
-//    }
-//}
+    }
+}
 
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
