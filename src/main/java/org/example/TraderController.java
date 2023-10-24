@@ -339,6 +339,8 @@ public class TraderController {
                     krw = (getMyAccountInfo("KRW", "balance") / 100) * 99.8;
                     System.out.println("이번 자금:" + krw);
                     break;
+                }else if(getMyAccountInfo("KRW","balance") == -1d){
+                    Thread.sleep(500);
                 }
             }
             System.out.println("급상승 코인 찾는중");
@@ -374,11 +376,14 @@ public class TraderController {
                     break loop2;
                 }
             }
+            if(getMyAccountInfo("KRW","balance") == -1d){
+                Thread.sleep(500);
+            }
             while (getMyAccountInfo("KRW", "locked") > 100) {
                 Thread.sleep(100);
             }
             while (buyPrice == 0 || volume == 0) {
-                Thread.sleep(100);
+                Thread.sleep(500);
                 buyPrice = getMyAccountInfo(target, "avg_buy_price");
                 volume = getMyAccountInfo(target, "balance");
             }
@@ -389,6 +394,9 @@ public class TraderController {
 
             loop3:
             while (true) {
+                if(getMyAccountInfo("KRW","balance") == -1d){
+                    Thread.sleep(500);
+                }
                 Double nowPrice = getOneCoinPrice(target);
                 if (nowPrice > buyPrice * 1.01) {
                     sellOrder(target, "" + volume);
@@ -399,6 +407,9 @@ public class TraderController {
                     System.out.println("손해 주문! -1");
                     break;
                 }
+            }
+            if(getMyAccountInfo("KRW","balance") == -1d){
+                Thread.sleep(1000);
             }
             krw = getMyAccountInfo("KRW", "locked");
             while (krw != 0) {
