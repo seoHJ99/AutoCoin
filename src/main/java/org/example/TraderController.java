@@ -103,11 +103,11 @@ public class TraderController {
                     double percent = Math.round(diff / priceList[i + 1] * 10000) / 100.0;
                     percentList.add(percent);
                 }
-                if (percentList.get(0) > 2 && percentList.get(1) > -0.5) {
+                if (percentList.get(0) > 2 && percentList.get(1) > 1 && percentList.get(0) + percentList.get(1) > 3) {
                     return name;
                 } else if (percentList.get(0) + percentList.get(1) > 3) {
-                    System.out.println(name);
-                    System.out.println("최근 2분동안 3프로 이상 상승");
+//                    System.out.println(name);
+//                    System.out.println("최근 2분동안 3프로 이상 상승");
                 }
             }
         } catch (IOException e) {
@@ -304,27 +304,27 @@ public class TraderController {
 
     }
 
-    public static void getApiKeys() throws IOException {
-        String protocol = "file:/";
-        String rootPath = System.getProperty("user.dir");
-        String propertiesPath = "/api.properties";
-
-        StringBuilder filePath = new StringBuilder(protocol)
-                .append(rootPath)
-                .append(propertiesPath);
-
-        URL propURL = new URL(filePath.toString());
-
-        Properties properties = new Properties();
-        properties.load(propURL.openStream());
-
-        accessKey = properties.getProperty("accessKey");
-        secretKey = properties.getProperty("secretKey");
-    }
+//    public static void getApiKeys() throws IOException {
+//        String protocol = "file:/";
+//        String rootPath = System.getProperty("user.dir");
+//        String propertiesPath = "/api.properties";
+//
+//        StringBuilder filePath = new StringBuilder(protocol)
+//                .append(rootPath)
+//                .append(propertiesPath);
+//
+//        URL propURL = new URL(filePath.toString());
+//
+//        Properties properties = new Properties();
+//        properties.load(propURL.openStream());
+//
+//        accessKey = properties.getProperty("accessKey");
+//        secretKey = properties.getProperty("secretKey");
+//    }
 
 
     public static void main(String[] args) throws IOException, NoSuchAlgorithmException, InterruptedException {
-        getApiKeys();
+//        getApiKeys();
         String target = "";
         List<String> list = getNames();
 
@@ -334,6 +334,7 @@ public class TraderController {
             Double buyPrice = 0d;
             Double volume = 0d;
             Double krw = 0d;
+            System.out.println("");
             while (true) {// sellOrder을 날리고 바로 오는 것이 아닌, sellOrder가 처리되면 오도록 해야함.
                 if (getMyAccountInfo("KRW", "balance") > 5000) {
                     krw = (getMyAccountInfo("KRW", "balance") / 100) * 99.8;
@@ -398,11 +399,11 @@ public class TraderController {
                     Thread.sleep(500);
                 }
                 Double nowPrice = getOneCoinPrice(target);
-                if (nowPrice > buyPrice * 1.01) {
+                if (nowPrice > buyPrice * 1.015) {
                     sellOrder(target, "" + volume);
                     System.out.println("이익 주문! +1");
                     break;
-                } else if (nowPrice < buyPrice * 0.98) {
+                } else if (nowPrice < buyPrice * 0.985) {
                     sellOrder(target, "" + volume);
                     System.out.println("손해 주문! -1");
                     break;
